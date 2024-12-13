@@ -38,34 +38,40 @@ def add_track(song_name: str, artist_name: str, genre_name: str, login:str, dura
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 user_id = get_user_id_by_login(login)
                 cur.execute(f"SET session.user_id = {user_id};")
-                cur.execute("""SELECT song_id FROM songs WHERE name = %s;""", (song_name,))
+
+                query_song_id = """SELECT song_id FROM songs WHERE name = %s;"""
+                cur.execute(query_song_id, (song_name,))
                 song = cur.fetchone()
 
                 if song:
                     return (f"Трек '{song_name}' уже существует в базе данных.")
 
-
-                cur.execute("""SELECT artist_id FROM artists WHERE name = %s;""", (artist_name,))
+                query_artist_id = """SELECT artist_id FROM artists WHERE name = %s;"""
+                cur.execute(query_artist_id, (artist_name,))
                 artist = cur.fetchone()
 
                 if not artist:
-                    cur.execute("""INSERT INTO artists (name) VALUES (%s) RETURNING artist_id;""", (artist_name,))
+                    query_add_artist = """INSERT INTO artists (name) VALUES (%s) RETURNING artist_id;"""
+                    cur.execute(query_add_artist, (artist_name,))
                     artist_id = cur.fetchone()['artist_id']
 
                 else:
                     artist_id = artist['artist_id']
 
-                cur.execute("""SELECT genre_id FROM genres WHERE name = %s;""", (genre_name,))
+                query_genre_id = """SELECT genre_id FROM genres WHERE name = %s;"""
+                cur.execute(query_genre_id, (genre_name,))
                 genre = cur.fetchone()
 
                 if not genre:
-                    cur.execute("""INSERT INTO genres (name) VALUES (%s) RETURNING genre_id;""", (genre_name,))
+                    query_add_genre = """INSERT INTO genres (name) VALUES (%s) RETURNING genre_id;"""
+                    cur.execute(query_add_genre, (genre_name,))
                     genre_id = cur.fetchone()['genre_id']
 
                 else:
                     genre_id = genre['genre_id']
 
-                cur.execute("""INSERT INTO songs (name, artist_id, genre_id, duration) VALUES (%s, %s, %s, %s);""",
+                query_add_song = """INSERT INTO songs (name, artist_id, genre_id, duration) VALUES (%s, %s, %s, %s);"""
+                cur.execute(query_add_song,
                             (song_name, artist_id, genre_id, duration_time))
 
                 conn.commit()
@@ -81,20 +87,24 @@ def counts_listens(song_name: str):
 
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT song_id FROM songs WHERE name = %s", (song_name,))
+                query_song_id = """SELECT song_id FROM songs WHERE name = %s;"""
+                cur.execute(query_song_id, (song_name,))
                 song = cur.fetchone()
 
                 if song:
                     song_id = song[0]
-                    cur.execute("SELECT count_listen FROM songs_listens WHERE song_id = %s", (song_id,))
+                    query_song_listens = """SELECT count_listen FROM songs_listens WHERE song_id = %s"""
+                    cur.execute(query_song_listens, (song_id,))
                     listen = cur.fetchone()
                     random_count = random.randint(1, 100)
                     if listen:
                         new_count = listen[0] + random_count
-                        cur.execute("UPDATE songs_listens SET count_listen = %s WHERE song_id = %s",
+                        query_update = """UPDATE songs_listens SET count_listen = %s WHERE song_id = %s"""
+                        cur.execute(query_update,
                                     (new_count, song_id))
                     else:
-                        cur.execute("INSERT INTO songs_listens (song_id, count_listen) VALUES (%s, 1)", (song_id,))
+                        query_add = """INSERT INTO songs_listens (song_id, count_listen) VALUES (%s, 1)"""
+                        cur.execute(query_add, (song_id,))
 
                     conn.commit()
 
@@ -127,13 +137,15 @@ def delete_track(song_name: str, login: str):
                 user_id = get_user_id_by_login(login)
                 cur.execute(f"SET session.user_id = {user_id};")
 
-                cur.execute("SELECT song_id FROM songs WHERE name = %s;", (song_name,))
+                query_song_id = """SELECT song_id FROM songs WHERE name = %s;"""
+                cur.execute(query_song_id, (song_name,))
                 song = cur.fetchone()
                 if not song:
                     return f"Трек '{song_name}' не найден."
                 song_id = song['song_id']
 
-                cur.execute("DELETE FROM songs WHERE song_id = %s;", (song_id,))
+                query_delete = """DELETE FROM songs WHERE song_id = %s;"""
+                cur.execute(query_delete, (song_id,))
                 conn.commit()
 
                 return f"Трек '{song_name}' успешно удалён."
@@ -163,14 +175,16 @@ def delete_artist(artist_name: str, login: str):
                 user_id = get_user_id_by_login(login)
                 cur.execute(f"SET session.user_id = {user_id};")
 
-                cur.execute("SELECT artist_id FROM artists WHERE name = %s;", (artist_name,))
+                query_artist_id = """SELECT artist_id FROM artists WHERE name = %s;"""
+                cur.execute(query_artist_id, (artist_name,))
                 artist = cur.fetchone()
                 if not artist:
                     return f"Исполнитель '{artist_name}' не найден."
 
                 artist_id = artist['artist_id']
 
-                cur.execute("DELETE FROM artists WHERE artist_id = %s;", (artist_id,))
+                query_delete = """DELETE FROM artists WHERE artist_id = %s;"""
+                cur.execute(query_delete, (artist_id,))
                 conn.commit()
 
                 return f"Исполнитель '{artist_name}' успешно удалён."
